@@ -517,7 +517,7 @@ function enableEditor(saveLabel, onSave){
   btn.addEventListener("click", () => {
     const ed = $("editor");
     if (ed.hidden) { buildEditor(); $("saveBtn").textContent = saveLabel;
-      if (/^Download/.test(saveLabel)) ed.querySelector(".meter").innerHTML = "Changes show in the preview right away. When you're done, press <b>Download updated file</b> and use the new file.";
+      if (/updated file/.test(saveLabel)) ed.querySelector(".meter").innerHTML = "Changes show in the preview right away. When you're done, press <b>" + saveLabel + "</b> and use the new file.";
       ed.hidden = false; btn.textContent = "✕ Close editor"; ed.scrollIntoView({behavior:"smooth"}); }
     else { ed.hidden = true; btn.textContent = "✎ Edit & upload"; }
   });
@@ -537,6 +537,19 @@ function exportFile(){
   c.querySelectorAll('[role="tab"]').forEach((t,i) => t.setAttribute("aria-selected", i === 0));
   c.querySelectorAll(".panel").forEach((p,i) => { p.hidden = i !== 0; });
   const html = "<!doctype html>\n" + c.outerHTML;
+  /* Phones: open the share sheet (Save to Files, Telegram, Drive…). Computers: normal download. */
+  try {
+    const file = new File([html], "Secure-Ipon-Today.html", {type: "text/html"});
+    if (matchMedia("(pointer: coarse)").matches && navigator.canShare && navigator.canShare({files: [file]})) {
+      navigator.share({files: [file], title: "Secure-Ipon-Today.html"})
+        .then(() => { $("msg").textContent = "Saved. Send this new file instead of the old one."; })
+        .catch(err => { if (err && err.name !== "AbortError") downloadHtml(html); });
+      return;
+    }
+  } catch (e) {}
+  downloadHtml(html);
+}
+function downloadHtml(html){
   const url = URL.createObjectURL(new Blob([html], {type: "text/html"}));
   const a = document.createElement("a"); a.href = url; a.download = "Secure-Ipon-Today.html";
   document.body.appendChild(a); a.click(); a.remove();
@@ -547,7 +560,7 @@ function exportFile(){
 (async () => {
   if (!window.claude || !window.claude.use) {
     if (location.protocol === "file:" || location.hash === "#edit") {
-      enableEditor("Download updated file", exportFile);
+      enableEditor(matchMedia("(pointer: coarse)").matches ? "Save updated file" : "Download updated file", exportFile);
       if (location.hash === "#edit") { show(2); $("editBtn").click(); }
     }
     return;
